@@ -1,0 +1,25 @@
+# $Id: sqltool.rc 5871 2018-12-22 16:56:06Z unsaved $
+
+# If you have the least concerns about security, then secure access to
+# your RC file.
+
+# Global default.  .+ matches all lookups:
+urlid .+ 
+username SA
+password
+
+# Download movies-relational.gz (or .zip) from the course website and
+# uncompress it. This will produce a directory movies-relational. 
+#
+# Windows users are advised to use forward slashes instead of back-slashes,
+# and to avoid paths containing spaces or other funny characters.  
+#
+urlid db1a 
+url jdbc:hsqldb:file:<YOUR PATH TO DATA>/movies-relational/movies;shutdown=true
+transiso TRANSACTION_READ_COMMITTED
+
+# Now you can run (in the directory where this db1a.rc file is stored) this command 
+#
+# java -jar <Path to HyperSQL lib directory>/sqltool.jar --rcfile=db1a.rc db1a
+#
+# 

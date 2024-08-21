@@ -1,0 +1,64 @@
+
+-- the simplest solution was submitted by 
+-- Krzysztof Druciarek in 2020 : 
+
+with recursive bacon(n, pid) as (
+    select 0 as n, pid2 as pid from coactors
+    where pid1 = 'nm0000102' and pid1=pid2
+    union
+    select n+1 as n, c.pid2 as pid from bacon
+    join coactors as c on c.pid1 = pid
+    where not(c.pid2 in (select pid from bacon)) and n < 8
+    -- without the "n < 8" we get the error
+    -- "query execution reached limit of recursion"
+)
+select n, count(*) from (
+    select min(n) as n, pid from bacon group by pid
+) group by n;
+
+-- why the min?  it turns out that there is a bug in
+-- HyperSQL where the nested "select pid from bacon" is
+-- not evaluated and loops are not avoided. So a person
+-- can have bacon number 2, 4, 6, 8 ... because loops
+-- are not avoided! 
+
+--- this should work but doesn't 
+with recursive bacon(n, pid) as (
+    select 0 as n, pid2 as pid from coactors
+    where pid1 = 'nm0000102' and pid1=pid2
+    union
+    select n+1 as n, c.pid2 as pid from bacon
+    join coactors as c on c.pid1 = pid
+    where not(c.pid2 in (select pid from bacon)) and n < 8
+)
+select n, count(*) from bacon group by n; 
+
+--- I reported this problem to Fred Toussi (the HyperSQL implementor)
+--- in 2020 and he added an undocumented feature: the table 
+--- "recursive_table" to refer to the recursive result computed
+--- so far. 
+--- Now, this works ... 
+with recursive bacon(n, pid) as (
+    select 0 as n, pid2 as pid from coactors
+    where pid1 = 'nm0000102' and pid1=pid2
+    union
+    select n+1 as n, c.pid2 as pid from bacon
+    join coactors as c on c.pid1 = pid
+    where not(c.pid2 in (select pid from recursive_table)) and n < 8
+)
+select n, count(*) from bacon group by n; 
+
+--- ... and now we don't need a bound 
+with recursive bacon(n, pid) as (
+    select 0 as n, pid2 as pid from coactors
+    where pid1 = 'nm0000102' and pid1=pid2
+    union
+    select n+1 as n, c.pid2 as pid from bacon
+    join coactors as c on c.pid1 = pid
+    where not(c.pid2 in (select pid from recursive_table)) 
+)
+select n, count(*) from bacon group by n; 
+
+-- lesson: HyperSQL's implementation of recursive queries has bugs
+-- this tells me that it is a feature of SQL that is seldom used by
+-- users of HyperSQL.... 

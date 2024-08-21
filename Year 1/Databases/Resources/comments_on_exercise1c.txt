@@ -1,0 +1,95 @@
+
+This is a good answer to exercise 1b: 
+
+select r1.role as role, p.name as name, m1.title as movie_title, m2.title as tv_movie_title
+from plays_role as r1
+join plays_role as r2 on r2.person_id = r1.person_id
+join movies as m1     on m1.movie_id = r1.movie_id
+join movies as m2     on m2.movie_id = r2.movie_id
+join people as p      on p.person_id = r1.person_id
+where r1.role = r2.role
+  and m1.type = 'movie'
+  and m2.type = 'tvMovie'
+order by r1.role, p.name, m1.title, m2.title;
+
+This could also be written as
+
+select r1.role as role, p.name as name, m1.title as movie_title, m2.title as tv_movie_title
+from plays_role r1
+join plays_role r2 on r1.person_id = r2.person_id and r1.role = r2.role
+join movies m1     on r1.movie_id = m1.movie_id   and m1.type = 'movie'
+join movies m2     on r2.movie_id = m2.movie_id   and m2.type = 'tvMovie'
+join people p      on p.person_id = r1.person_id
+order by r1.role, p.name, m1.title, m2.title;
+
+However, some people prefer the style where the on-clauses contain only the join predicates. 
+
+Below are some solutions that could be improved.
+
+1) We could "simply" the final where-clause using nested joins:
+
+select r1.role as role, p.name as name, m1.title as movie_title, m2.title as tv_movie_title
+from plays_role as r1
+join plays_role as r2 on r2.person_id = r1.person_id
+join (select * from movies where type = 'movie')   as m1 on m1.movie_id = r1.movie_id
+join (select * from movies where type = 'tvMovie') as m2 on m2.movie_id = r2.movie_id
+join people as p on p.person_id = r1.person_id
+where r1.role = r2.role
+order by r1.role, p.name, m1.title, m2.title;
+
+This is not ideal in that it is hard to read and may confuse a query optimizer.
+(HyperSQL does not optimize queries so it is actually less efficient.)
+
+2) This query takes this idea one step further by folding into the nested query the join with people. 
+
+select m2.role as role, m2.name as name, m1.title as movie_title, m2.title as tv_movie_title
+from (select person_id, name, role, title
+	     from movies
+	     join plays_role on movies.movie_id = plays_role.movie_id
+	     join people on plays_role.person_id = people.person_id
+	     where movies.type = 'movie') as m1
+      join (select person_id, name, role, title from
+	    movies
+	    join plays_role on movies.movie_id = plays_role.movie_id
+	    join people on plays_role.person_id = people.person_id
+	    where movies.type = 'tvMovie') as m2 on m1.person_id = m2.person_id
+	  where m1.role = m2.role 
+order by m2.role, m2.name, m1.title, m2.title;
+
+Again, when writing SQL always eliminate nested queries if you can. 
+
+3) Here is a solution that uses the "implicit join" syntax:
+
+select r1.role as role, p.name as name, m1.title as movie_title, m2.title as tv_movie_title
+	from plays_role as r1, plays_role as r2, people as p, movies as m1, movies as m2
+	where m1.movie_id = r1.movie_id
+	and m2.movie_id = r2.movie_id
+	and r1.person_id = p.person_id
+	and r2.person_id = p.person_id
+	and r1.role = r2.role
+	and m1.type = 'movie'
+	and m2.type = 'tvMovie'
+order by r1.role, p.name, m1.title, m2.title;
+
+This will not pass code review in most companies today.  Implicit joins, especially when many tables
+are involved, are very hard to debug. Using implicit joins is now considered a "deprecated style",
+although many textbooks still teach it. 
+
+Here is another variant of the implicit join, but even more complicated: 
+
+select	r1.role as role, p.name as name, m1.title as movie_title, m2.title as tv_movie_title
+from 	plays_role as r1,
+	(select * from plays_role) as r2,
+	(select movie_id, title, year from movies where type = 'movie') as m1,
+	(select movie_id, title, year from movies where type = 'tvMovie') as m2,
+	people as p
+where	r1.role = r2.role
+	and not (r1.movie_id = r2.movie_id)
+	and r1.person_id = r2.person_id
+	and m1.movie_id = r1.movie_id
+	and m2.movie_id = r2.movie_id
+	and r1.person_id = p.person_id
+order by r1.role, p.name, m1.title, m2.title;
+
+Again, this style is rather hard to read and so does not scale well. 
+

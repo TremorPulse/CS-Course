@@ -1,0 +1,84 @@
+Some sample questions
+
+Topic 1:
+Draw a family tree of languages you have seen in the Tripos and
+how their main influences from historically notable languages.
+Why is it ever worth studying dead languages?
+
+Topic 2/3/4:
+What do Fortran, Algol and LISP contribute to modern languages?
+Characterise, in two sentences each, a "motivating example"
+for what users might want to program each of in these languages?
+What did they adopt or reject from each other?
+
+Topic 4:
+What are Pascal discriminated unions, and what machine-level structures
+can they capture?
+Why are they unsafe?
+How can they be represented directly in C?
+Give similar, but safe, analogues in Java and ML.
+
+Topic 5: 
+What innovations did Simula add beyond its Algol heritage?
+Do any of its ideas survive in modern languages?
+How is the idea of `simulation' related to object-orientation?
+What is Smalltalk?
+
+Topic 6:
+What does the phrase "strong typing" mean?
+Show how hard-to-find errors can result from the absence of
+strong typing.
+Distinguish static typing and dynamic typing.
+Does static or dynamic typing imply strong typing?
+Is Java completely statically typed or completely dynamically typed?
+Give a Java program which passes the type checker but raises
+a type-related exception at run-time.
+
+Topic 6 (polymorphism):
+Exemplify three forms of polymorphism using Java constructs.
+What problems arise when combining subtype and generic polymorphism?
+Give an example program showing how Java arrays can give subtype-related
+errors at run time.  How do Java generics avoid this problem?
+How can I make a covariant ArrayList in Java?
+
+Topic 7:
+What is a scripting language?
+How does JavaScript execute within a browser and interact with a web page?
+
+Topic 8:
+Explain the core features of the ML Modules language.
+Explain the difference between the ":" and ":>" operators.
+What is an SML Functor?  Is it more or less expressive than the
+idea of inheritance in Java?
+
+Topic 9:
+What are threads?
+Why might they be hard for users and compilers to reason about?
+Why might Cilk's constructs be `better'?
+Give reasons for why threads would, or would not, be a good
+solution for programming a Google-like data centre?
+What is internal and external iteration?  Why might one be better
+than the other for exploiting parallelism?
+
+Topic 10: 
+What is Scala?
+What is the expression problem?  How does it affect the ease of
+making Small changes to a program spread over many files?
+
+Topic 11:
+What is a monad?  What are its operations?
+Distinguish between a side-effecting function, a pure function and
+a `computation' value in a monad.
+Assuming an IO monad, give the types of expressions which:
+(a) read a line from stdin
+(b) read a line from a file specified by parameter f
+(c) write a line to stdout
+(d) write a line to a file specified by parameter f.
+Given values c and int of type `unit IO' and `int' respectively,
+give a program which performs c
+(a) twice
+(b) n times
+How does a GADT enable users to represent
+data structures more precisely than ML can?
+
+Alan Mycroft 27/4/2017.

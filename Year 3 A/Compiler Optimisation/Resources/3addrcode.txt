@@ -1,0 +1,45 @@
+3-address intermediate code used in "Optimising Compilers" course.
+
+ALU operatons:
+
+ALU r1,r2,r3 (where ALU = ADD,SUB,MUL,XOR,AND,OR etc)
+ALU r1,r2,#k (immediates)
+ALU2 r1,r2   (where ALU = NEG, NOT, MOV)
+ALU2 r1,#k   (these are just ALU operations with on operand ignored)
+
+In general the first operand (r1 in the above) is destination register.
+
+Memory access:
+
+LDI r1,r2    (r1 = *(int *)r2)
+STI r1,r2    (*(int *)r1 = r2)
+[In the notes, ld.w r,m and st.w r,m are used as near-synonyms
+ but here "m" is a memory address rather than "where r1 points to"]
+
+Note that a STI instruction reads both its register operatands Ir1 and r2)
+and only writes to memory.
+
+Branching:
+
+CMP<cond> r1,r2,lab  (branch to lab if (r1 <cmp> r2); cmp = EQ,NE,LT etc)
+CALL f       (call procedure foo)
+CALLI r      (call procedure whose address is in register r)
+EXIT         (return -- assumption: args/results are in "pre-agreed places/registers")
+ENTRY f      (label of start of procedure + stylised "entry instructions")
+B lab        (unconditional branch to label lab)
+BI r         (branch to address contained in register r)
+
+These correspond to the RISC core of every modern processor.
+Notes:
+* real machines separate the CMP and the conditional branch into two
+instructions.
+* x86 writes MOV for LDI/STI and uses operand syntax to disambiguate.
+* x86 only has two-address instructions; might need a mov/alu pair
+  to implement ALU r1,r2,r3  (one exception: LEA eax,0(ebx,ebc) is a
+  3-address ADD!).
+* ARM writes
+  LDR r1, [r2, offset]    for LDI
+  STR r1, [r2, offset]    for STI
+* MIPS uses
+  LW  $1,offset($2)       ('W' = 32 bits)
+  SW  $1,offset($2)

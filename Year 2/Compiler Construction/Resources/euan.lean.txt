@@ -1,0 +1,194 @@
+import tactic.induction
+import tactic
+
+/-
+Compiler Construction 
+Computer Laboratory 
+University of Cambridge 
+Timothy G. Griffin (tgg22@cam.ac.uk) 
+
+Exercise Set 2. 
+
+Topics : 
+  a) Replacing tail-recursion with iteration. 
+  b) CPS transform 
+  c) Defunctionalisation 
+-/
+
+/- Problem 2. 
+
+   Apply (by hand) the CPS transformation to 
+   the gcd code. 
+
+   Explain your results. 
+
+-/
+
+def gcd : ℕ × ℕ → ℕ 
+  | (0, _) := 0
+  | (_, 0) := 0
+  | (m, n) := 
+    if m = n 
+    then m 
+    else if m < n 
+         then gcd (m, n - m)
+         else gcd (m - n, n)
+
+def gcd_cps {a : Type} : ℕ × ℕ → (ℕ → a) → a
+  | (0, _) cnt := cnt 0
+  | (_, 0) cnt := cnt 0
+  | (m, n) cnt :=
+    if m = n 
+    then cnt m 
+    else if m < n 
+         then gcd_cps (m, n - m) cnt
+         else gcd_cps (m - n, n) cnt
+
+-- Errors above because I haven't explicitly shown gcd_cps terminates
+
+#eval list.map gcd [(24, 638), (17, 289), (31, 1889)] 
+
+theorem gcd_cps_correct {a : Type} : 
+  ∀ (m : ℕ) (cnt : ℕ → a) (n : ℕ), 
+  gcd_cps (m, n) cnt = cnt (gcd (m, n)) :=
+  begin
+    intros m cnt,
+    apply nat.case_strong_induction_on m,
+    {
+      intro n,
+      apply nat.case_strong_induction_on n,
+      {simp [gcd, gcd_cps]},
+      {intros m' h0,
+      simp [gcd, gcd_cps]}
+    },
+    {
+      intros m' ih_m n,
+      apply nat.case_strong_induction_on n,
+      {simp [gcd, gcd_cps]},
+      {
+        intros n' ih_m',
+        rw gcd_cps,
+        cases decidable.em (m'.succ = n'.succ) with h_t h_f,
+        {simp [h_t, gcd]},
+        {
+          split_ifs,
+          simp [gcd, h],
+          repeat {rw gcd, split_ifs},
+          {simp [gcd, h], apply ih_m' (n'-m'), simp},
+          {have h2 : m'.succ - n'.succ ≤ m' := by finish,
+          apply ih_m (m'.succ - n'.succ) h2}
+        }
+      }
+    }
+  end 
+
+
+/- Problem 3. 
+
+Environments are treated as function in interp_0.ml. 
+
+Can you transform these definitions, starting 
+with defunctionalisation, and arrive at a list-based
+implementation of environments? 
+
+-/
+
+-- === Function-based environments ===
+
+def mupdate {a : Type} : list (string × a) → (string → option a) → (string → option a)
+  | [] env := env
+  | ((x, v)::rest) env := mupdate rest (λ y, if x = y then some v else env y)
+
+def envEmpty {a : Type} : string → option a := λ x, none
+
+def envInit {a : Type} : list (string × a) → (string → option a) := 
+  λ xs, mupdate xs envEmpty
+
+def mupdate' {a : Type} : list (string × a) → list (string × a) → list (string × a)
+  | [] env := env
+  | ((x, v)::rest) env := mupdate' rest ((x, v)::env)
+
+-- === List-based environments ===
+
+def envEmpty' {a : Type} : list (string × a) := []
+
+def envInit' {a : Type} : list (string × a) → list (string × a) := list.reverse
+
+def apply {a : Type} : list (string × a) → string → option a
+  | [] := λ y, none
+  | ((x, v)::xs) := λ y, if x = y then some v else apply xs y
+
+-- === Proof of equivalence ===
+
+lemma mupdate_apply {a : Type} (hds xs : list (string × a))
+  : mupdate hds (apply xs) = apply (mupdate' hds xs) :=
+  begin
+    induction' hds,
+    { funext, rw mupdate, rw mupdate' },
+    { cases' hd, rw mupdate, rw mupdate',
+      have h : (λ (y : string), ite (fst = y) (some snd) (apply xs y)) 
+                = apply ((fst, snd) :: xs) := by {
+        funext,
+        cases decidable.em (fst = y) with h_t h_f,
+        { simp [*], rw apply, simp },
+        { simp [*], rw apply, simp [h_f] } },
+      simp [h, ih] }
+  end
+
+theorem list_env_eq_fun_env {a : Type} : ∀ (updates : list (list (string × a))),
+    (list.foldr mupdate envEmpty updates)
+  = apply (list.foldr mupdate' envEmpty' updates) :=
+  begin
+    intro updates,
+    induction' updates,
+    {funext, simp [envEmpty, envEmpty', apply]},
+    {simp [*], simp [mupdate_apply]}
+  end
+
+
+/- Problem 4. 
+
+   Below is the code for (uncurried) map, with an test using fib. 
+   Can you apply the CPS transformation to map to produce map_cps? 
+   Will this map_cps still work with fib?  If not, what to do? 
+
+-/
+
+def map {a b : Type} : (a → b) → (list a) → (list b) 
+  | f [] := []
+  | f (a :: as) := (f a) :: (map f as)
+
+def fib : ℕ → ℕ
+  | 0 := 1
+  | 1 := 1
+  | (m + 2) := fib (m + 1) + fib m
+
+#eval map fib [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+/- My answer is somewhat incomplete here (I didn't realise f might be in continuation
+   passing style too) -- I haven't quite had time to finish it. 
+-/
+
+def map_cps {a b : Type} : (a → b) → (list a) → (list b → list b) → (list b) 
+  | f [] cnt := cnt []
+  | f (a :: as) cnt := map_cps f as (λ as', cnt ((f a) :: as'))
+
+#eval map_cps fib [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] id
+
+theorem map_cps_correct {a b : Type} : 
+  ∀ (xs : list a) (cnt : list b → list b) (f : a → b), 
+  map_cps f xs cnt = cnt (map f xs) := 
+  begin
+    intros xs,
+    induction' xs,
+    {simp [map, map_cps]},
+    {intros cnt f, 
+    simp [map, map_cps, ih]},
+  end
+
+def map_cps' {a b : Type} : (a → b) → list a → list b := 
+  λ f xs, map_cps f xs id
+
+theorem map_cps'_correct {a b : Type} 
+  : ∀ (f : a → b) (xs : list a), map f xs = map_cps' f xs :=
+  by simp [map_cps', map_cps_correct]
